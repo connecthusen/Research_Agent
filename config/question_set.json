@@ -1,0 +1,64 @@
+{
+  "questions": [
+    {
+      "id": 1,
+      "text": "What is the en passant rule in chess?",
+      "answerable": true,
+      "expected_source": ["chess_guide_pdf", "chess_strategy_url"]
+    },
+    {
+      "id": 2,
+      "text": "How does Retrieval Augmented Generation (RAG) work?",
+      "answerable": true,
+      "expected_source": ["ai_trends_pdf"]
+    },
+    {
+      "id": 3,
+      "text": "What is the LBW rule in cricket?",
+      "answerable": true,
+      "expected_source": ["cricket_rules_pdf", "cricket_laws_url"]
+    },
+    {
+      "id": 4,
+      "text": "Who invented the telephone?",
+      "answerable": false,
+      "expected_source": []
+    },
+    {
+      "id": 5,
+      "text": "What are the basic opening principles in chess?",
+      "answerable": true,
+      "expected_source": ["chess_guide_pdf", "chess_strategy_url"]
+    },
+    {
+      "id": 6,
+      "text": "What is the Duckworth-Lewis method in cricket?",
+      "answerable": true,
+      "expected_source": ["cricket_rules_pdf", "cricket_laws_url"]
+    },
+    {
+      "id": 7,
+      "text": "What is the capital of France?",
+      "answerable": false,
+      "expected_source": []
+    },
+    {
+      "id": 8,
+      "text": "How can AI trends impact businesses in 2026?",
+      "answerable": true,
+      "expected_source": ["ai_trends_pdf"]
+    },
+    {
+      "id": 9,
+      "text": "What is the history of the game of chess?",
+      "answerable": true,
+      "expected_source": ["chess_guide_pdf", "chess_strategy_url"]
+    },
+    {
+      "id": 10,
+      "text": "What is the speed of light?",
+      "answerable": false,
+      "expected_source": []
+    }
+  ]
+}

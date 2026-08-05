@@ -1,0 +1,34 @@
+{
+  "sources": [
+    {
+      "id": "chess_guide_pdf",
+      "type": "pdf",
+      "value": "data/pdfs/Chess_Detailed_Guide.pdf"
+    },
+    {
+      "id": "cricket_rules_pdf",
+      "type": "pdf",
+      "value": "data/pdfs/Cricket_Detailed_Rules.pdf"
+    },
+    {
+      "id": "ai_trends_pdf",
+      "type": "pdf",
+      "value": "data/pdfs/AI_Trends_Detailed_Report.pdf"
+    },
+    {
+      "id": "chess_strategy_url",
+      "type": "url",
+      "value": "https://en.wikipedia.org/wiki/Chess"
+    },
+    {
+      "id": "cricket_laws_url",
+      "type": "url",
+      "value": "https://en.wikipedia.org/wiki/Laws_of_cricket"
+    },
+    {
+      "id": "ai_trends_web",
+      "type": "url",
+      "value": "https://en.wikipedia.org/wiki/Artificial_intelligence"
+    }
+  ]
+}
