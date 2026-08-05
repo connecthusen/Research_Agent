@@ -22,7 +22,7 @@ $$\text{Score}_{\text{normalized}} = \frac{\text{Score} - \text{Score}_{\text{mi
 
 This scales candidates from both retrievers to a consistent $[0.0, 1.0]$ range. We then compute the final hybrid score:
 
-$$\text{Score}_{\text{hybrid}} = \alpha \cdot \text{Score}_{\text{vector\_norm}} + (1 - \alpha) \cdot \text{Score}_{\text{keyword\_norm}}$$
+$$\text{Score}_{\text{hybrid}} = \alpha \cdot \text{Score}_{\text{vector-norm}} + (1 - \alpha) \cdot \text{Score}_{\text{keyword-norm}}$$
 
 *   `alpha` is set to `0.5` by default to give equal weight to semantic meaning and exact keyword matching.
 *   Retrieval yields the top-K chunks with the highest hybrid scores.
