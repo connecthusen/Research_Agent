@@ -1,6 +1,7 @@
 # src/generation/qa_engine.py
 from typing import List, Dict
 import os
+import json
 from groq import Groq
 from config.settings import Settings, NO_ANSWER_MESSAGE, GROQ_MODEL
 from src.retrieval.hybrid_retriever import HybridRetriever
@@ -52,15 +53,37 @@ class QAEngine:
             "confidence": confidence,
         }
 
+    def _load_source_mapping(self) -> Dict[str, str]:
+        """Loads config/sources.json mapping from id to pdf filename or URL value."""
+        mapping = {}
+        config_path = "config/sources.json"
+        if os.path.exists(config_path):
+            with open(config_path, "r") as f:
+                try:
+                    data = json.load(f)
+                    for src in data.get("sources", []):
+                        src_id = src.get("id")
+                        src_type = src.get("type")
+                        src_value = src.get("value")
+                        if src_id and src_value:
+                            if src_type == "pdf":
+                                mapping[src_id] = os.path.basename(src_value)
+                            else:
+                                mapping[src_id] = src_value
+                except Exception:
+                    pass
+        return mapping
+
     def _generate_answer(self, question: str, chunks: List[Dict]) -> str:
         """Generate an answer using Groq LLaMA."""
+        mapping = self._load_source_mapping()
         context = "\n".join(
-            f"[Source: {chunk['source_id']}] {chunk['text']}"
+            f"[{mapping.get(chunk['source_id'], chunk['source_id'])}] {chunk['text']}"
             for chunk in chunks
         )
         prompt = f"""
         You are a research assistant. Answer the question using ONLY the provided context.
-        For every claim, cite the source ID in square brackets (e.g., [source1]).
+        For every claim, cite the exact source name or URL in square brackets exactly as listed in the context (e.g., [Chess_Detailed_Guide.pdf] or [https://en.wikipedia.org/wiki/Chess]). Do not use arbitrary index numbers like [1] or [2] for citations; you must cite the full source name or URL in brackets.
         If the answer is not in the context, respond with: "{self.refusal_message}"
 
         Context:
@@ -79,9 +102,9 @@ class QAEngine:
         return response.choices[0].message.content.strip()
 
     def _extract_citations(self, answer: str) -> List[str]:
-        """Extract [source_id] citations from the answer."""
+        """Extract citations (like pdf name or url) from the answer."""
         import re
-        return re.findall(r"\[([\w\-]+)\]", answer)
+        return re.findall(r"\[([^\]]+)\]", answer)
 
     def _estimate_confidence(self, chunks: List[Dict]) -> float:
         """Estimate confidence based on chunk scores."""
