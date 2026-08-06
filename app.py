@@ -238,52 +238,45 @@ div[data-testid="stAlert"] {{
     padding: 0 4px;
 }}
 
-/* ── Sidebar Column Buttons (Title Buttons) ── */
-[data-testid="stSidebar"] [data-testid="column"]:first-child button {{
-    background: #0d1626 !important;
-    border: 1px solid #1a2540 !important;
-    color: #94a3b8 !important;
+/* ── All buttons inside st.columns() in the sidebar → transparent base ── */
+[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] button {{
+    background: transparent !important;
+    box-shadow: none !important;
+}}
+
+/* ── First column (session/source title) buttons ── */
+[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:first-child button {{
+    border: 1px solid rgba(255, 255, 255, 0.07) !important;
+    color: #8b9bbf !important;
     text-align: left !important;
+    justify-content: flex-start !important;
     font-size: 0.78rem !important;
     font-weight: 500 !important;
     border-radius: 6px !important;
-    width: 100% !important;
-    height: 38px !important;
-    margin-top: 1px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
+    height: 36px !important;
     padding: 0 10px !important;
-    transition: all 0.2s ease !important;
+    transition: all 0.18s ease !important;
 }}
-[data-testid="stSidebar"] [data-testid="column"]:first-child button:hover {{
-    background: #111d35 !important;
-    border-color: #2563eb !important;
+[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:first-child button:hover {{
+    background: rgba(37, 99, 235, 0.1) !important;
+    border-color: rgba(37, 99, 235, 0.5) !important;
     color: #7dd3fc !important;
 }}
 
-/* ── Sidebar Delete Buttons (Trash Icon) ── */
-[data-testid="stSidebar"] [data-testid="column"]:last-child button {{
-    background: #1e1212 !important;
-    border: 1px solid #4a1414 !important;
+/* ── Last column (delete / trash) buttons ── */
+[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:last-child button {{
+    border: 1px solid rgba(248, 113, 113, 0.2) !important;
     color: #f87171 !important;
-    box-shadow: none !important;
-    padding: 6px 0 !important;
     border-radius: 6px !important;
-    width: 100% !important;
-    height: 38px !important;
-    margin-top: 1px !important;
-    font-size: 0.8rem !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    transition: all 0.2s ease !important;
+    height: 36px !important;
+    font-size: 0.75rem !important;
+    transition: all 0.18s ease !important;
+    padding: 0 !important;
 }}
-[data-testid="stSidebar"] [data-testid="column"]:last-child button:hover {{
-    background: #7f1d1d !important;
-    color: #ffffff !important;
+[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:last-child button:hover {{
+    background: rgba(127, 29, 29, 0.45) !important;
     border-color: #f87171 !important;
-    box-shadow: 0 0 8px rgba(127, 29, 29, 0.4) !important;
+    color: #ffffff !important;
 }}
 </style>
 """)
@@ -562,13 +555,21 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     if st.button("＋  New Session", use_container_width=True):
-        new_id = str(uuid.uuid4())
-        st.session_state["sessions"].insert(0, {
-            "id": new_id,
-            "title": "New Session",
-            "messages": []
-        })
-        st.session_state["active_session_id"] = new_id
+        active_sess = get_active_session()
+        if not active_sess["messages"]:
+            pass
+        else:
+            empty_sess = next((s for s in st.session_state["sessions"] if not s["messages"]), None)
+            if empty_sess:
+                st.session_state["active_session_id"] = empty_sess["id"]
+            else:
+                new_id = str(uuid.uuid4())
+                st.session_state["sessions"].insert(0, {
+                    "id": new_id,
+                    "title": "New Session",
+                    "messages": []
+                })
+                st.session_state["active_session_id"] = new_id
         st.rerun()
 
     # ── Session history ──
@@ -577,20 +578,43 @@ with st.sidebar:
     active_id = st.session_state["active_session_id"]
     sessions = st.session_state["sessions"]
 
-    if sessions:
-        for idx, sess in enumerate(sessions):
-            col1, col2 = st.columns([0.82, 0.18], gap="small")
+    # Only show sessions that have at least one message (excludes empty active session)
+    history_sessions = [s for s in sessions if len(s["messages"]) > 0]
+
+    if history_sessions:
+        for idx, sess in enumerate(history_sessions):
             is_active = (sess["id"] == active_id)
-            title = sess["title"]
-            label = f"▶ {title}" if is_active else f"💬 {title}"
+            title_display = sess["title"][:26] + "…" if len(sess["title"]) > 26 else sess["title"]
+            prefix = "▶" if is_active else "💬"
+            active_cls = " active" if is_active else ""
+            col1, col2 = st.columns([0.82, 0.18], gap="small")
             with col1:
-                if st.button(label, key=f"sess_title_{sess['id']}_{idx}", use_container_width=True):
+                if st.button(
+                    f"{prefix}  {title_display}",
+                    key=f"sess_title_{sess['id']}_{idx}",
+                    use_container_width=True,
+                ):
                     st.session_state["active_session_id"] = sess["id"]
                     st.rerun()
+                # Inject class override via HTML after button render
+                st.markdown(
+                    f"""<style>
+                    div[data-testid='stSidebar'] [data-testid='stVerticalBlock'] button[kind='secondary']:nth-of-type({idx+1}) {{
+                        background: {'rgba(37,99,235,0.12)' if is_active else 'transparent'} !important;
+                        border: 1px solid {'#3b82f6' if is_active else '#1e2d48'} !important;
+                        color: {'#7dd3fc' if is_active else '#94a3b8'} !important;
+                        box-shadow: none !important;
+                        text-align: left !important;
+                        font-size: 0.78rem !important;
+                        justify-content: flex-start !important;
+                    }}
+                    </style>""",
+                    unsafe_allow_html=True
+                )
             with col2:
                 if st.button("🗑️", key=f"del_sess_{sess['id']}_{idx}", use_container_width=True):
-                    sessions.pop(idx)
-                    if not sessions:
+                    st.session_state["sessions"] = [s for s in st.session_state["sessions"] if s["id"] != sess["id"]]
+                    if not st.session_state["sessions"]:
                         new_id = str(uuid.uuid4())
                         st.session_state["sessions"] = [{
                             "id": new_id,
@@ -602,7 +626,7 @@ with st.sidebar:
                         st.session_state["active_session_id"] = st.session_state["sessions"][0]["id"]
                     st.rerun()
     else:
-        st.markdown("<div style='font-size:0.76rem;color:#374151;padding:6px 4px;font-style:italic;'>No chat sessions</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size:0.76rem;color:#4b5a75;padding:6px 4px;font-style:italic;'>No past sessions yet</div>", unsafe_allow_html=True)
 
     st.markdown("<hr style='margin:12px 0;border-color:#1a2540;'>", unsafe_allow_html=True)
 
