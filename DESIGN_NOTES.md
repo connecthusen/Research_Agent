@@ -75,3 +75,28 @@ To maintain verifiable citations, we instruct the LLM to cite source IDs in squa
 The extraction regex matches any alphanumeric/hyphen string within brackets:
 `r"\[([\w\-]+)\]"`
 This allows the parser to successfully match document keys like `chess_strategy_url` or `cricket-laws-wiki` and populate the clean `citations` list returned to the user.
+
+---
+
+## 6. Premium Streamlit User Interface & Dashboard Architecture
+
+To make the RAG system accessible and highly interactive, the **Research Agent** features a premium Streamlit web application.
+
+### Glassmorphic & Custom CSS Theme
+Custom CSS injection overrides default Streamlit interface wrappers to establish an ultra-premium dark theme (`#080c14` background, `#c9d1e0` foreground). Key UI overrides include:
+*   **Typography**: Imports Google Fonts to render UI elements in *Inter* and code segments/source labels in *JetBrains Mono*.
+*   **Chat Bubbles**: Renders user messages as blue gradients and assistant answers in deep steel blue (`#0d1626`) with glowing left-side highlights.
+*   **Dynamic Layout**: Sets main containers to full-bleed wide-mode width (`95%`) for maximum layout efficiency.
+*   **Adversarial Visual Hooks**: Injects glowing red warning boxes and visual bypass indicators into the message timeline when a security threat is detected.
+
+### Dynamic Knowledge Base Management
+Rather than relying on a static index built beforehand, the sidebar dashboard acts as an administration control center:
+1.  **Source Upload/Removal**: Handles local PDF saves into `data/pdfs` and standardizes URL domain paths before writing/clearing objects in `config/sources.json`.
+2.  **Live Reindexing Trigger**: Clicking "Build / Reindex Knowledge Base" runs the full ingestion-retrieval pipeline asynchronously:
+    $$\text{SourceLoader} \rightarrow \text{Chunker} \rightarrow \text{VectorStore} \rightarrow \text{KeywordSearch}$$
+    This reconstructs and overwrites both semantic and keyword databases on the fly without restarting the web server process.
+
+### Interactive Citation & Evidence Viewer
+*   **URL Clickable Badges**: Ingested webpage links are parsed and rendered as rich, stylized CSS button tags. When hovered, they animate and link directly to the target external resource.
+*   **Retrieved Evidence Explorer**: Provides an expandable accordion breakdown for all matching chunks. This shows the top `k` source text snippets, chunk indices, and their raw hybrid fusion scores so that researchers can trace exactly why the LLM produced a given claim.
+

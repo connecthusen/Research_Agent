@@ -1,6 +1,6 @@
 # 🔍 Research Agent
 
-An intelligent, secure Retrieval-Augmented Generation (RAG) system designed to answer complex research questions based on curated document sources. It leverages a hybrid retrieval engine (combining dense vector embeddings and sparse keyword BM25 indexes) fused with semantic reranking and robust prompt-injection safety controls.
+An intelligent, secure Retrieval-Augmented Generation (RAG) system designed to answer complex research questions based on curated document sources. It leverages a hybrid retrieval engine (combining dense vector embeddings and sparse keyword BM25 indexes) fused with semantic reranking, robust prompt-injection safety controls, and a premium Streamlit web application.
 
 ---
 
@@ -28,6 +28,7 @@ Research Agent/
 │   └── utils/               # Utilities & Helpers
 │       └── security.py      # PromptInjectionDetector with precompiled regex limits
 ├── tests/                   # Automated Pytest Suite
+├── app.py                   # Premium Streamlit UI Application
 └── main.py                  # CLI Bootstrap Script
 ```
 
@@ -54,6 +55,12 @@ Research Agent/
 5. **Multi-Layer Input Security**:
    * Pre-execution prompt scanning checks for malicious attempts (e.g., bypass instructions, credential queries like Groq keys, file system commands, `/etc/passwd` requests).
    * Refuses unsafe prompts immediately without triggering unnecessary API calls.
+6. **Premium Streamlit Interface**:
+   * Custom glassmorphic dark-theme UI tailored with Google Fonts (*Inter* & *JetBrains Mono*).
+   * Visual indicator of system status (Active/Offline) and real-time knowledge base statistics.
+   * Dynamic source manager in the sidebar to upload local PDFs and register URLs.
+   * Interactive Q&A chat history with user and assistant message bubble rendering.
+   * Detailed breakdown for each assistant response including confidence score, clickable reference citation badges, security flags, and an expandable "Retrieved Evidence Chunks" dashboard showing text snippets, indices, and exact fusion scores.
 
 ---
 
@@ -88,13 +95,20 @@ HF_TOKEN=optional_huggingface_token
 
 ## 🏃 Running the Application
 
-To download reference documents, build the search indexes, and launch the interactive CLI:
+### Option A: Running the Streamlit Web Application (Recommended)
+To launch the interactive dashboard and chatbot interface:
+```powershell
+streamlit run app.py
+```
+Open `http://localhost:8501` in your browser. From here, you can upload files, register URLs, click **Build / Reindex Knowledge Base**, and start chatting.
 
+### Option B: Running the CLI Interactive Bootstrapper
+To build the indexes and run directly from your command-line interface:
 ```powershell
 python main.py
 ```
 
-Example usage inside CLI:
+Example usage inside the CLI:
 ```text
 [Search] Research Agent - Ask a question (or 'quit' to exit)
 [PASS] Successfully fetched: chess_guide_pdf
