@@ -39,3 +39,6 @@ htmlcov/
 
 # Ignore ChromaDB database
 data/chromadb/
+
+# Streamlit
+.streamlit/
