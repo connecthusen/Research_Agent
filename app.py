@@ -3,6 +3,7 @@ import os
 import json
 import base64
 import datetime
+import uuid
 import streamlit as st
 import pandas as pd
 from typing import List, Dict
@@ -236,6 +237,54 @@ div[data-testid="stAlert"] {{
     margin: 16px 0 8px 0;
     padding: 0 4px;
 }}
+
+/* ── Sidebar Column Buttons (Title Buttons) ── */
+[data-testid="stSidebar"] [data-testid="column"]:first-child button {{
+    background: #0d1626 !important;
+    border: 1px solid #1a2540 !important;
+    color: #94a3b8 !important;
+    text-align: left !important;
+    font-size: 0.78rem !important;
+    font-weight: 500 !important;
+    border-radius: 6px !important;
+    width: 100% !important;
+    height: 38px !important;
+    margin-top: 1px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding: 0 10px !important;
+    transition: all 0.2s ease !important;
+}}
+[data-testid="stSidebar"] [data-testid="column"]:first-child button:hover {{
+    background: #111d35 !important;
+    border-color: #2563eb !important;
+    color: #7dd3fc !important;
+}}
+
+/* ── Sidebar Delete Buttons (Trash Icon) ── */
+[data-testid="stSidebar"] [data-testid="column"]:last-child button {{
+    background: #1e1212 !important;
+    border: 1px solid #4a1414 !important;
+    color: #f87171 !important;
+    box-shadow: none !important;
+    padding: 6px 0 !important;
+    border-radius: 6px !important;
+    width: 100% !important;
+    height: 38px !important;
+    margin-top: 1px !important;
+    font-size: 0.8rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.2s ease !important;
+}}
+[data-testid="stSidebar"] [data-testid="column"]:last-child button:hover {{
+    background: #7f1d1d !important;
+    color: #ffffff !important;
+    border-color: #f87171 !important;
+    box-shadow: 0 0 8px rgba(127, 29, 29, 0.4) !important;
+}}
 </style>
 """)
 
@@ -293,6 +342,27 @@ def safe_id(name: str) -> str:
     return "".join(ch for ch in c if ch.isalnum() or ch == "_")
 
 sources = load_sources()
+
+# ──────────────────────── Session History Helpers ─────────────────────────────
+def init_sessions():
+    if "sessions" not in st.session_state or not st.session_state["sessions"]:
+        new_id = str(uuid.uuid4())
+        st.session_state["sessions"] = [{
+            "id": new_id,
+            "title": "New Session",
+            "messages": []
+        }]
+        st.session_state["active_session_id"] = new_id
+    elif "active_session_id" not in st.session_state:
+        st.session_state["active_session_id"] = st.session_state["sessions"][0]["id"]
+
+def get_active_session() -> Dict:
+    init_sessions()
+    active_id = st.session_state["active_session_id"]
+    for sess in st.session_state["sessions"]:
+        if sess["id"] == active_id:
+            return sess
+    return st.session_state["sessions"][0]
 
 # ─────────────────────────── Chat renderers ─────────────────────────────────
 
@@ -492,24 +562,47 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     if st.button("＋  New Session", use_container_width=True):
-        st.session_state.messages = []
+        new_id = str(uuid.uuid4())
+        st.session_state["sessions"].insert(0, {
+            "id": new_id,
+            "title": "New Session",
+            "messages": []
+        })
+        st.session_state["active_session_id"] = new_id
         st.rerun()
 
     # ── Session history ──
     st.markdown("<div class='sidebar-section-label'>Session History</div>", unsafe_allow_html=True)
-    msgs = st.session_state.get("messages", [])
-    user_msgs = [m["content"] for m in msgs if m["role"] == "user"]
-    if user_msgs:
-        for q in reversed(user_msgs[-5:]):
-            short = q[:32] + "…" if len(q) > 32 else q
-            st.markdown(f"""
-            <div style="background:#0d1626;border:1px solid #1a2540;border-radius:8px;
-                        padding:8px 12px;margin-bottom:5px;">
-                <div style="font-size:0.78rem;color:#94a3b8;font-weight:500;line-height:1.3;">{short}</div>
-            </div>
-            """, unsafe_allow_html=True)
+    init_sessions()
+    active_id = st.session_state["active_session_id"]
+    sessions = st.session_state["sessions"]
+
+    if sessions:
+        for idx, sess in enumerate(sessions):
+            col1, col2 = st.columns([0.82, 0.18], gap="small")
+            is_active = (sess["id"] == active_id)
+            title = sess["title"]
+            label = f"▶ {title}" if is_active else f"💬 {title}"
+            with col1:
+                if st.button(label, key=f"sess_title_{sess['id']}_{idx}", use_container_width=True):
+                    st.session_state["active_session_id"] = sess["id"]
+                    st.rerun()
+            with col2:
+                if st.button("🗑️", key=f"del_sess_{sess['id']}_{idx}", use_container_width=True):
+                    sessions.pop(idx)
+                    if not sessions:
+                        new_id = str(uuid.uuid4())
+                        st.session_state["sessions"] = [{
+                            "id": new_id,
+                            "title": "New Session",
+                            "messages": []
+                        }]
+                        st.session_state["active_session_id"] = new_id
+                    elif active_id == sess["id"]:
+                        st.session_state["active_session_id"] = st.session_state["sessions"][0]["id"]
+                    st.rerun()
     else:
-        st.markdown("<div style='font-size:0.76rem;color:#374151;padding:6px 4px;font-style:italic;'>No queries yet in this session</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size:0.76rem;color:#374151;padding:6px 4px;font-style:italic;'>No chat sessions</div>", unsafe_allow_html=True)
 
     st.markdown("<hr style='margin:12px 0;border-color:#1a2540;'>", unsafe_allow_html=True)
 
@@ -552,17 +645,32 @@ with st.sidebar:
 
     with st.expander(f"📂 Sources  ({len(sources)})"):
         if sources:
-            for src in sources:
+            for idx, src in enumerate(sources):
                 icon = "📄" if src["type"] == "pdf" else "🌐"
-                st.markdown(f"""
-                <div style="background:#0a0f1e;border:1px solid #1a2540;border-radius:6px;
-                            padding:7px 10px;margin-bottom:4px;font-size:0.78rem;">
-                    <span style="margin-right:6px;">{icon}</span>
-                    <span style="color:#7dd3fc;font-weight:600;">{src['id']}</span>
-                    <div style="color:#4b5a75;margin-top:2px;font-size:0.7rem;overflow:hidden;
-                                white-space:nowrap;text-overflow:ellipsis;">{src['value']}</div>
-                </div>
-                """, unsafe_allow_html=True)
+                col1, col2 = st.columns([0.8, 0.2], gap="small")
+                with col1:
+                    st.markdown(f"""
+                    <div style="background:#0a0f1e;border:1px solid #1a2540;border-radius:6px;
+                                padding:7px 10px;margin-bottom:4px;font-size:0.78rem;overflow:hidden;text-overflow:ellipsis;">
+                        <span style="margin-right:6px;">{icon}</span>
+                        <span style="color:#7dd3fc;font-weight:600;">{src['id']}</span>
+                        <div style="color:#4b5a75;margin-top:2px;font-size:0.7rem;overflow:hidden;
+                                    white-space:nowrap;text-overflow:ellipsis;">{src['value']}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with col2:
+                    if st.button("🗑️", key=f"del_{src['id']}_{idx}", use_container_width=True):
+                        if src["type"] == "pdf":
+                            file_path = src["value"]
+                            if os.path.exists(file_path):
+                                try:
+                                    os.remove(file_path)
+                                except Exception as e:
+                                    st.error(f"Error removing file: {e}")
+                        sources.pop(idx)
+                        save_sources(sources)
+                        st.success(f"Deleted: {src['id']}")
+                        st.rerun()
             if st.button("Clear All Sources", use_container_width=True):
                 save_sources([])
                 sources.clear()
@@ -673,8 +781,11 @@ st.markdown(f"""
             height:2px;border-radius:2px;margin-bottom:22px;"></div>
 """, unsafe_allow_html=True)
 
-# ── Capability cards (shown only on empty session) ──
-if not st.session_state.get("messages"):
+active_session = get_active_session()
+active_messages = active_session["messages"]
+
+# ── Capability cards (shown only on empty active session) ──
+if not active_messages:
     st.markdown("""
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:26px;">
         <div style="background:#0d1626;border:1px solid #1a2540;border-radius:10px;padding:16px;">
@@ -736,10 +847,7 @@ if not st.session_state.get("initialized", False):
     st.stop()
 
 # ── Session messages ──
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-for msg in st.session_state.messages:
+for msg in active_messages:
     if msg["role"] == "user":
         render_user_message(msg["content"])
     else:
@@ -747,8 +855,12 @@ for msg in st.session_state.messages:
 
 # ── Chat input ──
 if question := st.chat_input("Ask a research question…"):
+    if active_session["title"] == "New Session":
+        short_title = question[:28] + ("…" if len(question) > 28 else "")
+        active_session["title"] = short_title
+
     render_user_message(question)
-    st.session_state.messages.append({"role": "user", "content": question})
+    active_messages.append({"role": "user", "content": question})
 
     qa_engine = st.session_state["qa_engine"]
     retriever = st.session_state["retriever"]
@@ -777,7 +889,7 @@ if question := st.chat_input("Ask a research question…"):
             }
 
     render_assistant_message(answer, meta)
-    st.session_state.messages.append({"role": "assistant", "content": answer, "metadata": meta})
+    active_messages.append({"role": "assistant", "content": answer, "metadata": meta})
     st.rerun()
 
 # ── Footer ──

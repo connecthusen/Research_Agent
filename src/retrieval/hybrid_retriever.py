@@ -17,11 +17,20 @@ from config.settings import (
     HYBRID_ALPHA,
     CANDIDATE_K_CHUNKS,
     NO_ANSWER_THRESHOLD,
+    USE_RERANKER,
+    RERANKER_MODEL,
 )
 
 
 class HybridRetriever:
-    def __init__(self, vector_store, keyword_search, alpha: float = HYBRID_ALPHA):
+    def __init__(
+        self,
+        vector_store,
+        keyword_search,
+        alpha: float = HYBRID_ALPHA,
+        use_reranker: bool = USE_RERANKER,
+        reranker_model: str = RERANKER_MODEL,
+    ):
         """
         Args:
             vector_store: an initialized VectorStore instance.
@@ -29,10 +38,15 @@ class HybridRetriever:
                              (already built or loadable from disk).
             alpha: weight on the normalized vector score;
                    (1 - alpha) goes to the normalized keyword score.
+            use_reranker: whether to use semantic reranking.
+            reranker_model: model name for the Cross-Encoder.
         """
         self.vector_store = vector_store
         self.keyword_search = keyword_search
         self.alpha = alpha
+        self.use_reranker = use_reranker
+        self.reranker_model = reranker_model
+        self.reranker = None
 
     @staticmethod
     def _normalize(results: List[Dict]) -> Dict[str, float]:
@@ -52,7 +66,7 @@ class HybridRetriever:
     def retrieve(self, query: str, k: int = 5, candidate_k: int = CANDIDATE_K_CHUNKS) -> List[Dict]:
         """
         Returns the top-k fused chunks, each with a 0-1 'score' field
-        (weighted combination of normalized vector + keyword scores).
+        (weighted combination of normalized vector + keyword scores, or reranked).
         """
         vector_results = self.vector_store.query(query, k=candidate_k)
         keyword_results = self.keyword_search.query(query, k=candidate_k)
@@ -80,6 +94,25 @@ class HybridRetriever:
             fused.append({**chunk, "score": fused_score})
 
         fused.sort(key=lambda r: r["score"], reverse=True)
+
+        if self.use_reranker and fused:
+            if self.reranker is None:
+                from sentence_transformers import CrossEncoder
+                print(f"[INFO] Loading Cross-Encoder reranker: {self.reranker_model}...")
+                self.reranker = CrossEncoder(self.reranker_model)
+            
+            pairs = [(query, r["text"]) for r in fused]
+            rerank_scores = self.reranker.predict(pairs)
+            
+            import math
+            def sigmoid(x):
+                return 1 / (1 + math.exp(-x))
+            
+            for r, score in zip(fused, rerank_scores):
+                r["score"] = float(sigmoid(score))
+                
+            fused.sort(key=lambda r: r["score"], reverse=True)
+
         return fused[:k]
 
     def is_answerable(self, results: List[Dict], threshold: float = NO_ANSWER_THRESHOLD) -> bool:

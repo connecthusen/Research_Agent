@@ -28,3 +28,7 @@ TOP_K_CHUNKS = 5              # chunks handed to the LLM as final context
 CANDIDATE_K_CHUNKS = 15       # candidates pulled from each retriever pre-fusion
 HYBRID_ALPHA = 0.5            # weight on vector score; (1 - alpha) on keyword score
 NO_ANSWER_THRESHOLD = 0.15    # fused top score below this => "not answerable"
+
+# --- Reranker tuning ---
+USE_RERANKER = True
+RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"

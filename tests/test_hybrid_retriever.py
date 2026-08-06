@@ -36,7 +36,7 @@ class FakeKeywordSearchAllZero:
 
 
 def test_fusion_prefers_chunk_strong_on_both_signals():
-    retriever = HybridRetriever(FakeVectorStore(), FakeKeywordSearch(), alpha=0.5)
+    retriever = HybridRetriever(FakeVectorStore(), FakeKeywordSearch(), alpha=0.5, use_reranker=False)
     results = retriever.retrieve("en passant rule", k=3)
 
     assert results[0]["source_id"] == "chess_guide_pdf"
@@ -46,7 +46,7 @@ def test_fusion_prefers_chunk_strong_on_both_signals():
 
 
 def test_union_keeps_single_signal_chunks():
-    retriever = HybridRetriever(FakeVectorStore(), FakeKeywordSearch(), alpha=0.5)
+    retriever = HybridRetriever(FakeVectorStore(), FakeKeywordSearch(), alpha=0.5, use_reranker=False)
     results = retriever.retrieve("test", k=10)
     ids = {(r["source_id"], r["chunk_index"]) for r in results}
 
@@ -56,7 +56,7 @@ def test_union_keeps_single_signal_chunks():
 
 
 def test_is_answerable_threshold():
-    retriever = HybridRetriever(FakeVectorStore(), FakeKeywordSearch(), alpha=0.5)
+    retriever = HybridRetriever(FakeVectorStore(), FakeKeywordSearch(), alpha=0.5, use_reranker=False)
     results = retriever.retrieve("en passant rule", k=3)
     assert retriever.is_answerable(results, threshold=0.15) is True
 
@@ -65,11 +65,41 @@ def test_is_answerable_threshold():
 
 
 def test_empty_results_from_both_retrievers():
-    retriever = HybridRetriever(FakeVectorStoreAllZero(), FakeKeywordSearchAllZero(), alpha=0.5)
+    retriever = HybridRetriever(FakeVectorStoreAllZero(), FakeKeywordSearchAllZero(), alpha=0.5, use_reranker=False)
     results = retriever.retrieve("anything", k=5)
     assert results == []
     assert retriever.is_answerable(results) is False
     print("[PASS] Empty-retrievers edge case test passed!")
+
+
+class FakeReranker:
+    def predict(self, pairs):
+        scores = []
+        for query, text in pairs:
+            if "opening" in text:
+                scores.append(2.0)
+            elif "passant" in text:
+                scores.append(0.5)
+            else:
+                scores.append(-2.0)
+        return scores
+
+
+def test_reranker_sorting_and_sigmoid():
+    retriever = HybridRetriever(FakeVectorStore(), FakeKeywordSearch(), alpha=0.5, use_reranker=True)
+    retriever.reranker = FakeReranker()
+    results = retriever.retrieve("chess rule", k=3)
+
+    # "chess opening principles" should be ranked first because logit 2.0 (sigmoid ~ 0.88) > logit 0.5 (sigmoid ~ 0.62)
+    assert "opening" in results[0]["text"]
+    assert "passant" in results[1]["text"]
+
+    import math
+    expected_score_0 = 1 / (1 + math.exp(-2.0))
+    expected_score_1 = 1 / (1 + math.exp(-0.5))
+    assert abs(results[0]["score"] - expected_score_0) < 1e-5
+    assert abs(results[1]["score"] - expected_score_1) < 1e-5
+    print("[PASS] Reranker sorting and sigmoid test passed!")
 
 
 if __name__ == "__main__":
@@ -77,4 +107,5 @@ if __name__ == "__main__":
     test_union_keeps_single_signal_chunks()
     test_is_answerable_threshold()
     test_empty_results_from_both_retrievers()
+    test_reranker_sorting_and_sigmoid()
     print("\n[PASS] All hybrid_retriever tests passed!")

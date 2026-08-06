@@ -39,15 +39,17 @@ Research Agent/
 1. **Robust Ingestion Pipeline**:
    * Extracts clean web text (cleaning navigation menus, footers, stylesheets, scripts) via BeautifulSoup.
    * Extracts local PDF contents accurately via `pypdf`.
-2. **Token-Aware Sentence Chunker**:
+2. **Sub-Word Token-Aware Sentence Chunker**:
    * Splits texts into target chunks (512 tokens) preserving sentence boundaries.
+   * Uses Hugging Face `AutoTokenizer` for `sentence-transformers/all-MiniLM-L6-v2` to count exact sub-word tokens instead of crude whitespace word estimations.
    * Employs sliding overlap (50 tokens) to preserve context boundaries without duplicate redundancy.
-   * Fallback limits split extremely long blocks lacking periods (e.g. table data).
-3. **Normalized Hybrid Retriever**:
+   * Includes automatic fallback to whitespace word splitting if the tokenizer fails to load.
+3. **Normalized Hybrid Retriever with Semantic Reranking**:
    * **Dense Semantic Search**: Cosine similarity index over `all-MiniLM-L6-v2` embeddings in ChromaDB.
    * **Sparse Keyword Search**: BM25 keyword score ranking.
    * **Reciprocal Rank Fusion (RRF)**: Normalizes raw scores (0 to 1 scaling) from both pipelines and combines them using custom weights (`alpha=0.5`).
-   * **Bypass/Answerability Checks**: Checks top fusion scores against a strict confidence threshold (`0.15`). If context matches are too weak, the LLM is bypassed to prevent hallucination.
+   * **Cross-Encoder Semantic Reranking**: Reranks top fusion candidates using `cross-encoder/ms-marco-MiniLM-L-6-v2` with sigmoid logit normalization (`1 / (1 + exp(-x))`) to maximize contextual relevance.
+   * **Bypass/Answerability Checks**: Checks top reranked scores against a confidence threshold (`0.15`). If context matches are too weak, the LLM is bypassed to prevent hallucination.
 4. **LLM Generation with Citation Mapping**:
    * Connects to Groq Cloud API using `llama-3.3-70b-versatile` for high-fidelity reasoning.
    * Strict prompt rules to answer strictly on context.
@@ -57,10 +59,10 @@ Research Agent/
    * Refuses unsafe prompts immediately without triggering unnecessary API calls.
 6. **Premium Streamlit Interface**:
    * Custom glassmorphic dark-theme UI tailored with Google Fonts (*Inter* & *JetBrains Mono*).
-   * Visual indicator of system status (Active/Offline) and real-time knowledge base statistics.
-   * Dynamic source manager in the sidebar to upload local PDFs and register URLs.
+   * **Multi-Session Chat History**: Keeps chat conversations grouped in individual sessions with auto-titling from the first question, sidebar navigation, and session deletion.
+   * **Individual Source Manager**: Delete single local PDFs or URL sources directly from the sidebar with custom trash controls.
    * Interactive Q&A chat history with user and assistant message bubble rendering.
-   * Detailed breakdown for each assistant response including confidence score, clickable reference citation badges, security flags, and an expandable "Retrieved Evidence Chunks" dashboard showing text snippets, indices, and exact fusion scores.
+   * Detailed breakdown for each assistant response including confidence score, clickable reference citation badges, security flags, and an expandable "Retrieved Evidence Chunks" dashboard showing text snippets, indices, and exact fusion/rerank scores.
 
 ---
 

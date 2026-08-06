@@ -4,23 +4,43 @@ import re
 
 
 class Chunker:
-    def __init__(self, chunk_size: int = 512, overlap: int = 50):
+    def __init__(
+        self,
+        chunk_size: int = 512,
+        overlap: int = 50,
+        use_tokenizer: bool = True,
+        model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
+    ):
         """
         Args:
-            chunk_size: Target size per chunk, in whitespace tokens.
-            overlap: Number of TOKENS to carry into the next chunk.
-                     (Bug fixed: previously sliced by sentence *count* using
-                     a number meant for tokens, so overlap=50 pulled in
-                     almost every prior sentence -- massive duplication.)
+            chunk_size: Target size per chunk, in sub-word tokens (or fallback whitespace words).
+            overlap: Number of tokens to carry into the next chunk.
+            use_tokenizer: Whether to load and use Hugging Face AutoTokenizer.
+            model_name: Hugging Face model identifier for the tokenizer.
         """
         self.chunk_size = chunk_size
         self.overlap = overlap
+        self.tokenizer = None
+
+        if use_tokenizer:
+            try:
+                from transformers import AutoTokenizer
+                from config.settings import Settings
+
+                kwargs = {}
+                if hasattr(Settings, "HF_TOKEN") and Settings.HF_TOKEN:
+                    kwargs["token"] = Settings.HF_TOKEN
+                self.tokenizer = AutoTokenizer.from_pretrained(model_name, **kwargs)
+            except Exception as e:
+                print(f"[WARN] Failed to load tokenizer ({e}). Falling back to whitespace tokenization.")
 
     def _split_sentences(self, text: str) -> List[str]:
         sentences = re.split(r'(?<=[.!?])\s+', text)
         return [s.strip() for s in sentences if s.strip()]
 
     def _count_tokens(self, text: str) -> int:
+        if self.tokenizer is not None:
+            return len(self.tokenizer.encode(text, add_special_tokens=False))
         return len(text.split())
 
     def _split_long_sentence(self, sentence: str) -> List[str]:

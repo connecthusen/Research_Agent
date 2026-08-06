@@ -25,7 +25,15 @@ This scales candidates from both retrievers to a consistent $[0.0, 1.0]$ range. 
 $$\text{Score}_{\text{hybrid}} = \alpha \cdot \text{Score}_{\text{vector-norm}} + (1 - \alpha) \cdot \text{Score}_{\text{keyword-norm}}$$
 
 *   `alpha` is set to `0.5` by default to give equal weight to semantic meaning and exact keyword matching.
-*   Retrieval yields the top-K chunks with the highest hybrid scores.
+*   Retrieval yields candidate chunks (default `CANDIDATE_K_CHUNKS = 15`) with the highest hybrid scores.
+
+### Cross-Encoder Semantic Reranking
+While bi-encoder vector similarity and BM25 sparse keyword searches surface relevant candidates quickly, bi-encoders compute query and document representations independently. To achieve maximum ranking precision:
+1.  Candidate chunks from fusion are passed into a pre-trained Cross-Encoder model (`cross-encoder/ms-marco-MiniLM-L-6-v2`).
+2.  The Cross-Encoder performs full cross-attention over `(query, document_chunk)` pairs, producing logit scores $x$.
+3.  Logits are mapped into a bounded $[0.0, 1.0]$ confidence range using a Sigmoidal transformation:
+    $$\text{Score}_{\text{reranked}} = \frac{1}{1 + e^{-x}}$$
+4.  The top-$K$ candidate chunks sorted by $\text{Score}_{\text{reranked}}$ are handed to the LLM.
 
 ---
 
@@ -42,14 +50,17 @@ To safeguard against this, the system implements an **Answerability Threshold** 
 
 ## 3. Ingestion & Token-Aware Chunker Design
 
+### Sub-Word Tokenizer Integration
+Rather than using crude whitespace word splitting (`len(text.split())`), the chunker initializes Hugging Face `AutoTokenizer` for `sentence-transformers/all-MiniLM-L6-v2`. Token counts are computed as `len(tokenizer.encode(text, add_special_tokens=False))`, matching the precise sub-word token boundaries of the dense embedding model.
+
 ### Sentence-Preserving Sliding Window
 To avoid cutting sentences in half (which destroys semantic readability and local cohesion), the chunker:
 1.  Splits input text into sentences using lookbehind regex (`(?<=[.!?])\s+`).
-2.  Aggregates whole sentences until they approach the target `chunk_size` limit (default `512` whitespace tokens).
-3.  Carries over an overlap window calculated in tokens (default `50` tokens) by pulling in whole sentences from the end of the previous chunk.
+2.  Aggregates whole sentences until they approach the target `chunk_size` limit (default `512` sub-word tokens).
+3.  Carries over an overlap window calculated in sub-word tokens (default `50` tokens) by pulling in whole sentences from the end of the previous chunk.
 
 ### Long Sentence Fallback
-In document extraction (particularly noisy PDFs), punctuation marks like periods can get lost, resulting in single giant strings of words. If a single "sentence" exceeds the 512-token limit, the chunker falls back to splitting by raw token count so that chunks do not grow unbounded.
+In document extraction (particularly noisy PDFs), punctuation marks like periods can get lost, resulting in single giant strings of words. If a single "sentence" exceeds the 512-token limit, the chunker falls back to splitting by sub-word token count so that chunks do not grow unbounded.
 
 ---
 
@@ -89,9 +100,16 @@ Custom CSS injection overrides default Streamlit interface wrappers to establish
 *   **Dynamic Layout**: Sets main containers to full-bleed wide-mode width (`95%`) for maximum layout efficiency.
 *   **Adversarial Visual Hooks**: Injects glowing red warning boxes and visual bypass indicators into the message timeline when a security threat is detected.
 
-### Dynamic Knowledge Base Management
+### Multi-Session Chat Manager
+Conversations are managed as discrete session objects in `st.session_state["sessions"]`:
+1.  **Thread Persistence**: All user and assistant messages belong to their active conversation thread (`st.session_state["active_session_id"]`).
+2.  **Auto-Titling**: The first user question automatically names the chat thread (e.g. *"what is RAG in AI"*).
+3.  **Session Archiving & Switching**: Clicking **"＋ New Session"** initializes a clean conversation window and archives past chats into the sidebar. Clicking any past session button loads its full message history.
+4.  **Session Deletion**: Individual session records can be deleted via dedicated sidebar trash controls.
+
+### Dynamic Knowledge Base & Source Management
 Rather than relying on a static index built beforehand, the sidebar dashboard acts as an administration control center:
-1.  **Source Upload/Removal**: Handles local PDF saves into `data/pdfs` and standardizes URL domain paths before writing/clearing objects in `config/sources.json`.
+1.  **Individual Source Removal**: Local PDFs can be uploaded or individually deleted from disk/registry, and web URLs can be registered/removed independently.
 2.  **Live Reindexing Trigger**: Clicking "Build / Reindex Knowledge Base" runs the full ingestion-retrieval pipeline asynchronously:
     $$\text{SourceLoader} \rightarrow \text{Chunker} \rightarrow \text{VectorStore} \rightarrow \text{KeywordSearch}$$
     This reconstructs and overwrites both semantic and keyword databases on the fly without restarting the web server process.

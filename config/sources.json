@@ -29,6 +29,11 @@
       "id": "ai_trends_web",
       "type": "url",
       "value": "https://en.wikipedia.org/wiki/Artificial_intelligence"
+    },
+    {
+      "id": "newsunorg_middle_eastgad_source1gad_campaignid23698981627gbraid0aaaaad9kiae0dnr5xiasrqam0qvk4y8wggclidcjwkcajw4ddtbhaqeiwakhymsrrgfessfhaw5ckifnhiizahd4z3j8i028jdybs9g_2q_eiazdababoczxsqavd_bwe_url",
+      "type": "url",
+      "value": "https://news.un.org/en/news/region/middle-east?gad_source=1&gad_campaignid=23698981627&gbraid=0AAAAAD9kiAe0DnR5XiASRQaM0QVk4Y8wG&gclid=CjwKCAjw4dDTBhAqEiwAkHYmSrrgfEssFhaw5cKIFNHIIZAHD4Z3J8i028JDYbs9g-2Q-EiAzdaBaBoCzxsQAvD_BwE"
     }
   ]
 }
