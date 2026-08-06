@@ -4,6 +4,14 @@ An intelligent, secure Retrieval-Augmented Generation (RAG) system designed to a
 
 ---
 
+## 🖥️ UI Preview
+
+![Research Agent UI](assets/ui_preview.png)
+
+> *Premium glassmorphic dark-theme interface with multi-session chat history, knowledge base manager, and capability cards.*
+
+---
+
 ## 🛠️ Architecture & System Design
 
 The system is structured as modular, clean packages:
